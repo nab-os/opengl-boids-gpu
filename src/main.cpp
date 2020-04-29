@@ -77,7 +77,7 @@ int main(int argc, char **argv) {
     bird_update.load();
 
     //====Texture====
-    int bird_size = 50;
+    int bird_size = 70;
     cout << "Instanciating " << bird_size * bird_size << " birds" << endl;
     GLuint bird_positions;
     glGenTextures(1, &bird_positions);
