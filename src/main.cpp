@@ -98,63 +98,56 @@ int main(int argc, char **argv) {
     bird_update.load();
 
     //====Texture====
-    int bird_size = 70;
-    cout << "Instanciating " << bird_size * bird_size << " birds" << endl;
-    GLuint bird_positions;
-    glGenTextures(1, &bird_positions);
-    glBindTexture(GL_TEXTURE_2D, bird_positions);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, bird_size, bird_size, 0, GL_RGBA, GL_FLOAT, 0);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glBindImageTexture(0, bird_positions, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
-    glBindTexture(GL_TEXTURE_2D, 0);
-
+    ivec2 grid_size(1920, 1080);
     GLuint bird_movements;
+    GLuint bird_movements_next;
     glGenTextures(1, &bird_movements);
+    glGenTextures(1, &bird_movements_next);
     glBindTexture(GL_TEXTURE_2D, bird_movements);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, bird_size, bird_size, 0, GL_RGBA, GL_FLOAT, 0);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, grid_size.x, grid_size.y, 0, GL_RGBA, GL_FLOAT, 0);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glBindImageTexture(1, bird_movements, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
-    glBindTexture(GL_TEXTURE_2D, 0);
+        glBindImageTexture(0, bird_movements, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
 
-    GLuint bird_final;
-    glGenTextures(1, &bird_final);
-    glBindTexture(GL_TEXTURE_2D, bird_final);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 1920, 1080, 0, GL_RGBA, GL_FLOAT, 0);
+    glBindTexture(GL_TEXTURE_2D, bird_movements_next);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, grid_size.x, grid_size.y, 0, GL_RGBA, GL_FLOAT, 0);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glBindImageTexture(2, bird_final, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+        glBindImageTexture(1, bird_movements_next, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
     glBindTexture(GL_TEXTURE_2D, 0);
 
     //====================================
     int framerate = 1000/60;
 
-    bird_init.compute(bird_size);
+    bird_init.compute(ivec2(1000, 1000));
     glfwMakeContextCurrent(window);
-    glViewport(0, 0, width, height);
+    glViewport(0, 0, window_width, window_height);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE);
     while(!glfwWindowShouldClose(window)) {
 	    int startTime = int(glfwGetTime() * 1000);
 
-        GLuint clearColor[4] = {0, 0, 0, 0};
-        glClearTexImage(bird_final, 0, GL_BGRA, GL_UNSIGNED_BYTE, &clearColor);
-        bird_update.compute(bird_size);
+        if (resized) {
+            GLuint clearColor[4] = {0, 0, 0, 0};
+            glClearTexImage(bird_movements_next, 0, GL_BGRA, GL_UNSIGNED_BYTE, &clearColor);
+            bird_update.compute(grid_size);
+            glCopyImageSubData(bird_movements_next, GL_TEXTURE_2D, 0, 0, 0, 0,
+                               bird_movements, GL_TEXTURE_2D, 0, 0, 0, 0,
+                               grid_size.x, grid_size.y, 1);
+        }
 
-        glClearColor(0.2, 0.2, 0.2, 1.0f);
+        glClearColor(0.1, 0.1, 0.1, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glUseProgram(render.getProgramID());
+            render.sendIvec2Uniform("grid_size", grid_size);
             glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, bird_final);
+            glBindTexture(GL_TEXTURE_2D, bird_movements);
             quad.render();
         glUseProgram(0);
 

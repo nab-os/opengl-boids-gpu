@@ -7,6 +7,7 @@ using std::cout;
 using std::endl;
 using std::string;
 using std::ifstream;
+using glm::ivec2;
 using glm::vec2;
 using glm::vec3;
 using glm::vec4;
@@ -138,6 +139,11 @@ void Shader::sendVec3Uniform(string nom, vec3 vecteur) {
 void Shader::sendVec2Uniform(string nom, vec2 vecteur) {
 	int localisation = glGetUniformLocation(m__programID, nom.c_str());
 	glUniform2f(localisation, vecteur.x, vecteur.y);
+}
+
+void Shader::sendIvec2Uniform(string nom, ivec2 vecteur) {
+	int localisation = glGetUniformLocation(m__programID, nom.c_str());
+	glUniform2i(localisation, vecteur.x, vecteur.y);
 }
 
 void Shader::sendIntUniform(string nom, GLuint id) {

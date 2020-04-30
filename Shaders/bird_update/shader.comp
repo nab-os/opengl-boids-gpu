@@ -1,81 +1,83 @@
 #version 430
 layout(local_size_x = 1, local_size_y = 1) in;
-layout(rgba32f, binding = 0) uniform image2D bird_positions;
-layout(rgba32f, binding = 1) uniform image2D bird_movements;
-layout(rgba32f, binding = 2) uniform image2D bird_final;
-
-uniform int bird_size;
-
-vec2 rotate(vec2 v, float angle) {
-    float s = sin(angle);
-    float c = cos(angle);
-
-    return mat2(c, -s,
-                s,  c) * v;
-}
+layout(rgba32f, binding = 0) uniform image2D bird_movements;
+layout(rgba32f, binding = 1) uniform image2D bird_movements_next;
 
 void main() {
+    ivec2 grid_size = ivec2(1919, 1079);
+
     ivec2 position = ivec2(gl_GlobalInvocationID.xy);
-    vec2 bird_position = imageLoad(bird_positions, position).xy;
-    vec2 bird_movement = imageLoad(bird_movements, position).xy;
+    vec4 bird_infos = imageLoad(bird_movements, position);
+    bool exists = bird_infos.z > 0;
+    if (exists) {
+        vec2 bird_movement = bird_infos.xy;
 
-    float visual_range = 50 / 1920.0;
-    float repel_distance = 6.0 / 1920;
+        int visual_range = 30;
+        int repel_distance = 8;
 
-    vec2 mean_position = vec2(0);
-    vec2 mean_movement = vec2(0);
-    vec2 mean_repel = vec2(0);
-    int birds_seen = 0;
-    int birds_too_close = 0;
-    for (int x = 0; x < bird_size; x++) {
-        for (int y = 0; y < bird_size; y++) {
-            vec2 temp_position = imageLoad(bird_positions, ivec2(x, y)).xy;
-            vec2 temp_movement = imageLoad(bird_movements, ivec2(x, y)).xy;
-            if (distance(temp_position, bird_position) < visual_range) {
-                mean_position += temp_position;
-                mean_movement += temp_movement;
-                birds_seen++;
-            }
-            if (distance(temp_position, bird_position) < repel_distance) {
-                mean_repel += bird_position - temp_position;
-                birds_too_close++;
+        vec2 mean_position = vec2(0);
+        vec2 mean_movement = vec2(0);
+        vec2 mean_repel = vec2(0);
+        int birds_seen = 0;
+        int birds_too_close = 0;
+        for (int x = position.x-visual_range; x < position.x+visual_range; x++) {
+            for (int y = position.y-visual_range; y < position.y+visual_range; y++) {
+                ivec2 temp_position = ivec2(x, y);
+                vec4 temp_infos = imageLoad(bird_movements, temp_position);
+                bool exists = temp_infos.z > 0;
+                if (exists) {
+                    vec2 temp_movement = temp_infos.xy;
+                    mean_position += temp_position;
+                    mean_movement += temp_movement;
+                    birds_seen++;
+                    if (distance(position, temp_position) < repel_distance) {
+                        mean_repel += position - temp_position;
+                        birds_too_close++;
+                    }
+                }
             }
         }
-    }
-    mean_position /= birds_seen;
-    mean_movement /= birds_seen;
-    vec2 move_to_center = (mean_position - bird_position) * 0.001;
-    vec2 repel_movement = (mean_repel) * 0.05;
-    vec2 align_movement = (mean_movement) * 0.08;
+        mean_position /= birds_seen;
+        mean_movement /= birds_seen;
+        vec2 move_to_center = (mean_position - position) * 0.004;
+        vec2 repel_movement = (mean_repel) * 0.01;
+        vec2 align_movement = (mean_movement) * 0.08;
 
-    if (birds_seen > 1) {
-        bird_movement += move_to_center + align_movement;
-    }
-    if (birds_too_close > 1) {
-        bird_movement += repel_movement;
-    }
+        if (birds_seen > 1) {
+            bird_movement += move_to_center + align_movement;
+        }
+        if (birds_too_close > 1) {
+            bird_movement += repel_movement;
+        }
 
-    float speed_limit = 0.0020;
-    if (length(bird_movement) > speed_limit) {
-        bird_movement = normalize(bird_movement) * speed_limit;
-    }
+        float speed_limit = 5;
+        if (length(bird_movement) > speed_limit) {
+            bird_movement = normalize(bird_movement) * speed_limit;
+        }
 
-    bird_position += bird_movement;
+        position += ivec2(bird_movement);
 
-    float speed_boost = 1.4;
-    if (bird_position.x < 0) {
-        bird_movement = reflect(bird_movement, vec2(1, 0)) * speed_boost;
-    } else if (bird_position.x > 1) {
-        bird_movement = reflect(bird_movement, vec2(-1, 0)) * speed_boost;
-    }
-    if (bird_position.y < 0) {
-        bird_movement = reflect(bird_movement, vec2(0, 1)) * speed_boost;
-    } else if (bird_position.y > 1) {
-        bird_movement = reflect(bird_movement, vec2(0, -1)) * speed_boost;
-    }
-    imageStore(bird_positions, position, vec4(bird_position, 0.5, 1));
-    imageStore(bird_movements, position, vec4(bird_movement, 0.5, 1));
+        float speed_boost = 2;
+        if (position.x < 0) {
+            position.x = 0;
+            bird_movement = reflect(bird_movement, vec2(1, 0)) * speed_boost;
+        } else if (position.x > grid_size.x) {
+            position.x = grid_size.x-1;
+            bird_movement = reflect(bird_movement, vec2(-1, 0)) * speed_boost;
+        }
+        if (position.y < 0) {
+            position.y = 0;
+            bird_movement = reflect(bird_movement, vec2(0, 1)) * speed_boost;
+        } else if (position.y > grid_size.y) {
+            position.y = grid_size.y-1;
+            bird_movement = reflect(bird_movement, vec2(0, -1)) * speed_boost;
+        }
 
-    ivec2 screen_position = ivec2(bird_position.x * 1920.0, bird_position.y * 1080.0);
-    imageStore(bird_final, screen_position, vec4(bird_position, 0.5, 1));
+        if (imageLoad(bird_movements, position).z > 0 && imageLoad(bird_movements_next, position).z > 0) {
+        } else {
+            imageStore(bird_movements_next, position, vec4(bird_movement, 1, 1));
+        }
+
+
+    }
 }

@@ -134,10 +134,10 @@ bool ComputeShader::compilerShader(GLuint &shader, GLenum type, string const &fi
     }
 }
 
-void ComputeShader::compute(GLuint size) {
+void ComputeShader::compute(glm::ivec2 size) {
     glUseProgram(m__programID);
-        int localisation = glGetUniformLocation(m__programID, "bird_size");
-        glUniform1i(localisation, size);
-        glDispatchCompute(size, size, 1);
+        int localisation = glGetUniformLocation(m__programID, "grid_size");
+        glUniform2i(localisation, size.x, size.y);
+        glDispatchCompute(size.x, size.y, 1);
     glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 }

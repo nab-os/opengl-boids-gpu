@@ -23,6 +23,7 @@ class Shader {
         void sendVec4Uniform(std::string nom, glm::vec4 vecteur);
         void sendVec3Uniform(std::string nom, glm::vec3 vecteur);
         void sendVec2Uniform(std::string nom, glm::vec2 vecteur);
+        void sendIvec2Uniform(std::string nom, glm::ivec2 vecteur);
         void sendIntUniform(std::string nom, GLuint id);
         void sendFloatUniform(std::string nom, float val);
 

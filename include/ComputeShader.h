@@ -2,6 +2,10 @@
 
 #include <GL/glew.h>
 
+// Includes GLM
+#include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
 #include <string>
 #include <vector>
 
@@ -19,5 +23,5 @@ class ComputeShader {
         ~ComputeShader();
 
         bool load();
-        void compute(GLuint size);
+        void compute(glm::ivec2 size);
 };
