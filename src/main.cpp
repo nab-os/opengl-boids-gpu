@@ -19,6 +19,26 @@
 using namespace std;
 using namespace glm;
 
+int window_width = 1920;
+int window_height = 1080;
+int viewport_width = 1920;
+int viewport_height = 1080;
+bool resized = false;
+
+void framebuffer_size_callback(GLFWwindow* window, int w, int h) {
+    window_width = w;
+    window_height = h;
+    if (w < h) {
+        viewport_width = w;
+        viewport_height = (9 * w) / 16;
+    } else {
+        viewport_width = (16 * h) / 9;
+        viewport_height = h;
+    }
+    glViewport((window_width - viewport_width) / 2, (window_height - viewport_height) / 2, viewport_width, viewport_height);
+    resized = true;
+}
+
 int main(int argc, char **argv) {
     int err = glfwInit();
 	if (!err) {
@@ -38,6 +58,7 @@ int main(int argc, char **argv) {
 		exit(EXIT_FAILURE);
 	}
 
+    glfwSetWindowSizeCallback(window, framebuffer_size_callback);
 	glfwMakeContextCurrent(window);
 	glfwSetInputMode(window, GLFW_STICKY_KEYS, 1);
 
@@ -113,7 +134,7 @@ int main(int argc, char **argv) {
     glBindTexture(GL_TEXTURE_2D, 0);
 
     //====================================
-    int framerate = 60/1000;
+    int framerate = 1000/60;
 
     bird_init.compute(bird_size);
     glfwMakeContextCurrent(window);
@@ -146,9 +167,9 @@ int main(int argc, char **argv) {
         if(elapsedTime < framerate)
             this_thread::sleep_for(std::chrono::milliseconds(framerate - elapsedTime));
 
-        int endTime2 = int(glfwGetTime() * 1000);
-        int elapsedTime2 = endTime2 - startTime;
-        cout << 1000/elapsedTime2 << " fps" << endl;
+        //int endTime2 = int(glfwGetTime() * 1000);
+        //int elapsedTime2 = endTime2 - startTime;
+        //cout << 1000/elapsedTime2 << " fps" << endl;
     };
 
     return EXIT_SUCCESS;
