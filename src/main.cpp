@@ -1,4 +1,4 @@
-#include <iostream>
+uuauieauie#include <iostream>
 #include <vector>
 #include <chrono>
 #include <thread>
@@ -98,7 +98,7 @@ int main(int argc, char **argv) {
     bird_update.load();
 
     //====Texture====
-    int bird_size = 70;
+    int bird_size = 500;
     cout << "Instanciating " << bird_size * bird_size << " birds" << endl;
     GLuint bird_positions;
     glGenTextures(1, &bird_positions);
@@ -134,6 +134,7 @@ int main(int argc, char **argv) {
     glBindTexture(GL_TEXTURE_2D, 0);
 
     //====================================
+    cout << "Running: " << endl;
     int framerate = 1000/60;
 
     bird_init.compute(bird_size);
@@ -167,10 +168,11 @@ int main(int argc, char **argv) {
         if(elapsedTime < framerate)
             this_thread::sleep_for(std::chrono::milliseconds(framerate - elapsedTime));
 
-        //int endTime2 = int(glfwGetTime() * 1000);
-        //int elapsedTime2 = endTime2 - startTime;
-        //cout << 1000/elapsedTime2 << " fps" << endl;
+        int endTime2 = int(glfwGetTime() * 1000);
+        int elapsedTime2 = endTime2 - startTime;
+        cout << '\r' << 1000/elapsedTime2 << " fps" << std::flush;
     };
+    cout << endl;
 
     return EXIT_SUCCESS;
 }

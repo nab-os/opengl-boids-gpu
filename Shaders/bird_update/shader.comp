@@ -19,42 +19,6 @@ void main() {
     vec2 bird_position = imageLoad(bird_positions, position).xy;
     vec2 bird_movement = imageLoad(bird_movements, position).xy;
 
-    float visual_range = 50 / 1920.0;
-    float repel_distance = 6.0 / 1920;
-
-    vec2 mean_position = vec2(0);
-    vec2 mean_movement = vec2(0);
-    vec2 mean_repel = vec2(0);
-    int birds_seen = 0;
-    int birds_too_close = 0;
-    for (int x = 0; x < bird_size; x++) {
-        for (int y = 0; y < bird_size; y++) {
-            vec2 temp_position = imageLoad(bird_positions, ivec2(x, y)).xy;
-            vec2 temp_movement = imageLoad(bird_movements, ivec2(x, y)).xy;
-            if (distance(temp_position, bird_position) < visual_range) {
-                mean_position += temp_position;
-                mean_movement += temp_movement;
-                birds_seen++;
-            }
-            if (distance(temp_position, bird_position) < repel_distance) {
-                mean_repel += bird_position - temp_position;
-                birds_too_close++;
-            }
-        }
-    }
-    mean_position /= birds_seen;
-    mean_movement /= birds_seen;
-    vec2 move_to_center = (mean_position - bird_position) * 0.001;
-    vec2 repel_movement = (mean_repel) * 0.05;
-    vec2 align_movement = (mean_movement) * 0.08;
-
-    if (birds_seen > 1) {
-        bird_movement += move_to_center + align_movement;
-    }
-    if (birds_too_close > 1) {
-        bird_movement += repel_movement;
-    }
-
     float speed_limit = 0.0020;
     if (length(bird_movement) > speed_limit) {
         bird_movement = normalize(bird_movement) * speed_limit;
@@ -62,7 +26,7 @@ void main() {
 
     bird_position += bird_movement;
 
-    float speed_boost = 1.4;
+    float speed_boost = 1;
     if (bird_position.x < 0) {
         bird_movement = reflect(bird_movement, vec2(1, 0)) * speed_boost;
     } else if (bird_position.x > 1) {
@@ -73,6 +37,7 @@ void main() {
     } else if (bird_position.y > 1) {
         bird_movement = reflect(bird_movement, vec2(0, -1)) * speed_boost;
     }
+
     imageStore(bird_positions, position, vec4(bird_position, 0.5, 1));
     imageStore(bird_movements, position, vec4(bird_movement, 0.5, 1));
 
