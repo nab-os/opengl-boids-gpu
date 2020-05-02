@@ -66,6 +66,7 @@ ComputeShader::~ComputeShader() {
 bool ComputeShader::compilerShader(GLuint &shader, GLenum type, string const &fichierSource) {
 	// Création du shader
 	shader = glCreateShader(type);
+    cout << this << " [ComputeShader] compiling: " << fichierSource << endl;
 
 	// Vérification du shader
 	if (shader == 0) {
@@ -134,10 +135,10 @@ bool ComputeShader::compilerShader(GLuint &shader, GLenum type, string const &fi
     }
 }
 
-void ComputeShader::compute(glm::ivec2 size) {
+void ComputeShader::compute(int width, int height) {
     glUseProgram(m__programID);
         int localisation = glGetUniformLocation(m__programID, "grid_size");
-        glUniform2i(localisation, size.x, size.y);
-        glDispatchCompute(size.x, size.y, 1);
+        glUniform2i(localisation, width, height);
+        glDispatchCompute(width, height, 1);
     glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 }

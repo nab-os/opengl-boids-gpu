@@ -40,50 +40,53 @@ void framebuffer_size_callback(GLFWwindow* window, int w, int h) {
 }
 
 int main(int argc, char **argv) {
-    int err = glfwInit();
-	if (!err) {
-		std::cout << "Failed to initialize GLFW: " << err << "\n";
-		exit(EXIT_FAILURE);
-	}
+    int bird_number(200);
+    if (argc == 2) {
+        bird_number = atoi(argv[1]);
+    }
 
-	//=====================
+    int err = glfwInit();
+    if (!err) {
+        std::cout << "Failed to initialize GLFW: " << err << "\n";
+        exit(EXIT_FAILURE);
+    }
+
+    //=====================
     int width = 1920;
     int height = 1080;
     std::cout << "Screen resolution: " << width << "x" << height << std::endl;
 
     GLFWwindow* window = glfwCreateWindow(width, height, "Test boids", NULL, NULL);
-	if (!window) {
-		std::cout << "Erreur lors de la creation de la fenetre" << std::endl;
-		glfwTerminate();
-		exit(EXIT_FAILURE);
-	}
+    if (!window) {
+        std::cout << "Erreur lors de la creation de la fenetre" << std::endl;
+        glfwTerminate();
+        exit(EXIT_FAILURE);
+    }
 
     glfwSetWindowSizeCallback(window, framebuffer_size_callback);
-	glfwMakeContextCurrent(window);
-	glfwSetInputMode(window, GLFW_STICKY_KEYS, 1);
+    glfwMakeContextCurrent(window);
+    glfwSetInputMode(window, GLFW_STICKY_KEYS, 1);
 
-	//=====================
-	glfwWindowHint(GLFW_SAMPLES, 4); // 4x antialiasing
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4); //OpenGL 4.6
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    //=====================
+    glfwWindowHint(GLFW_SAMPLES, 4); // 4x antialiasing
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4); //OpenGL 4.6
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-	// On initialise GLEW
-	GLenum initialisationGLEW(glewInit());
+    // On initialise GLEW
+    GLenum initialisationGLEW(glewInit());
 
-	// Si l'initialisation a échoué :
-	if (initialisationGLEW != GLEW_OK) {
-		// On affiche l'erreur grâce à la fonction : glewGetErrorString(GLenum code)
-		std::cout << "Erreur d'initialisation de GLEW : " << glewGetErrorString(initialisationGLEW) << std::endl;
-		glfwTerminate();
-		exit(EXIT_FAILURE);
-	}
+    // Si l'initialisation a échoué :
+    if (initialisationGLEW != GLEW_OK) {
+        // On affiche l'erreur grâce à la fonction : glewGetErrorString(GLenum code)
+        std::cout << "Erreur d'initialisation de GLEW : " << glewGetErrorString(initialisationGLEW) << std::endl;
+        glfwTerminate();
+        exit(EXIT_FAILURE);
+    }
 
     glfwSetWindowShouldClose(window, false);
 
     //===========INITIALIZATION===========
-
-    //====Objects====
     Quad quad;
     quad.load();
 
@@ -91,64 +94,96 @@ int main(int argc, char **argv) {
     Shader render("final");
     render.load();
 
+    Shader background("background");
+    background.load();
+
     ComputeShader bird_init("bird_init");
     bird_init.load();
+
+    ComputeShader heatmaps("heatmaps");
+    heatmaps.load();
 
     ComputeShader bird_update("bird_update");
     bird_update.load();
 
+
+    //====Shader data====
+
+    GLuint positions;
+    GLuint movements;
+    glGenBuffers(1, &positions);
+    glGenBuffers(1, &movements);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, positions);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, bird_number * sizeof(vec2), 0, GL_DYNAMIC_COPY);
+    glBindBuffer(GL_ARRAY_BUFFER, positions);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4*sizeof(float), 0);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, movements);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, bird_number * sizeof(vec2), 0, GL_DYNAMIC_COPY);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, positions);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, movements);
+
     //====Texture====
     ivec2 grid_size(1920, 1080);
-    GLuint bird_movements;
-    GLuint bird_movements_next;
-    glGenTextures(1, &bird_movements);
-    glGenTextures(1, &bird_movements_next);
-    glBindTexture(GL_TEXTURE_2D, bird_movements);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, grid_size.x, grid_size.y, 0, GL_RGBA, GL_FLOAT, 0);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glBindImageTexture(0, bird_movements, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+    GLuint center_heatmap;
+    GLuint repel_heatmap;
+    glGenTextures(1, &center_heatmap);
+    glGenTextures(1, &repel_heatmap);
 
-    glBindTexture(GL_TEXTURE_2D, bird_movements_next);
+    glBindTexture(GL_TEXTURE_2D, center_heatmap);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, grid_size.x, grid_size.y, 0, GL_RGBA, GL_FLOAT, 0);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glBindImageTexture(1, bird_movements_next, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+        glBindImageTexture(2, center_heatmap, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+
+    glBindTexture(GL_TEXTURE_2D, repel_heatmap);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, grid_size.x, grid_size.y, 0, GL_RGBA, GL_FLOAT, 0);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glBindImageTexture(3, repel_heatmap, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
     glBindTexture(GL_TEXTURE_2D, 0);
 
     //====================================
     int framerate = 1000/60;
 
-    bird_init.compute(ivec2(1000, 1000));
+    GLuint clearColor[4] = {0, 0, 0, 0};
+
+    bird_init.compute(bird_number);
     glfwMakeContextCurrent(window);
     glViewport(0, 0, window_width, window_height);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE);
+
+    cout << "Running: " << endl;
     while(!glfwWindowShouldClose(window)) {
-	    int startTime = int(glfwGetTime() * 1000);
+        int startTime = int(glfwGetTime() * 1000);
 
         if (resized) {
-            GLuint clearColor[4] = {0, 0, 0, 0};
-            glClearTexImage(bird_movements_next, 0, GL_BGRA, GL_UNSIGNED_BYTE, &clearColor);
-            bird_update.compute(grid_size);
-            glCopyImageSubData(bird_movements_next, GL_TEXTURE_2D, 0, 0, 0, 0,
-                               bird_movements, GL_TEXTURE_2D, 0, 0, 0, 0,
-                               grid_size.x, grid_size.y, 1);
+            glClearTexImage(center_heatmap, 0, GL_BGRA, GL_UNSIGNED_BYTE, &clearColor);
+            glClearTexImage(repel_heatmap, 0, GL_BGRA, GL_UNSIGNED_BYTE, &clearColor);
+            heatmaps.compute(bird_number);
+            bird_update.compute(bird_number);
         }
 
         glClearColor(0.1, 0.1, 0.1, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        glUseProgram(render.getProgramID());
-            render.sendIvec2Uniform("grid_size", grid_size);
+        glUseProgram(background.getProgramID());
+            background.sendIntUniform("center_heatmap", 0);
+            background.sendIntUniform("repel_heatmap", 1);
             glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, bird_movements);
+            glBindTexture(GL_TEXTURE_2D, center_heatmap);
+            glActiveTexture(GL_TEXTURE1);
+            glBindTexture(GL_TEXTURE_2D, repel_heatmap);
             quad.render();
+        glUseProgram(render.getProgramID());
+            glDrawArrays(GL_POINTS, 0, bird_number);
         glUseProgram(0);
 
         glfwSwapBuffers(window);
@@ -160,10 +195,11 @@ int main(int argc, char **argv) {
         if(elapsedTime < framerate)
             this_thread::sleep_for(std::chrono::milliseconds(framerate - elapsedTime));
 
-        //int endTime2 = int(glfwGetTime() * 1000);
-        //int elapsedTime2 = endTime2 - startTime;
-        //cout << 1000/elapsedTime2 << " fps" << endl;
+        int endTime2 = int(glfwGetTime() * 1000);
+        int elapsedTime2 = endTime2 - startTime;
+        cout << '\r' << 1000/elapsedTime2 << " fps" << std::flush;
     };
+    cout << endl;
 
     return EXIT_SUCCESS;
 }

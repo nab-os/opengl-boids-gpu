@@ -1,6 +1,13 @@
 #version 430
 layout(local_size_x = 1, local_size_y = 1) in;
-layout(rgba32f, binding = 0) uniform image2D bird_movements;
+
+layout(std430, binding = 0) buffer PositionBuffer {
+    vec2 positions[];
+};
+
+layout(std430, binding = 1) buffer MovementBuffer {
+    vec2 movements[];
+};
 
 uniform ivec2 grid_size;
 
@@ -9,8 +16,9 @@ float rand(vec2 co) {
 }
 
 void main() {
-    ivec2 test = ivec2(1919, 1079);
-    ivec2 bird_position = ivec2(rand(gl_GlobalInvocationID.yx) * test.x, rand(gl_GlobalInvocationID.xy) * test.y);
-    vec2 bird_movement = vec2(rand(gl_GlobalInvocationID.xy) * 2 - 1, rand(gl_GlobalInvocationID.yx) * 2 - 1) * 3;
-    imageStore(bird_movements, bird_position, vec4(bird_movement, 1, 1));
+    vec2 movement = vec2((gl_GlobalInvocationID.x / 20000.0) * 2 - 1, rand(1.89323*gl_GlobalInvocationID.xx) * 2 - 1);
+    vec2 second = vec2(rand(1323*gl_GlobalInvocationID.xx) * 2 - 1, rand(gl_GlobalInvocationID.xx / 20000.0) * 2 - 1);
+    movement = -reflect(movement, second);
+    positions[gl_GlobalInvocationID.x] = vec2(gl_GlobalInvocationID.x / 20000.0, rand(gl_GlobalInvocationID.xx));
+    movements[gl_GlobalInvocationID.x] = movement * 0.001;
 }

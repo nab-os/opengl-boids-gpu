@@ -23,5 +23,6 @@ class ComputeShader {
         ~ComputeShader();
 
         bool load();
-        void compute(glm::ivec2 size);
+        void compute(int size) { compute(size, 1); };
+        void compute(int width, int height);
 };
