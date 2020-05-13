@@ -12,25 +12,46 @@ layout(rgba32f, binding = 2) uniform image2D center_heatmap;
 layout(rgba32f, binding = 3) uniform image2D repel_heatmap;
 
 void main() {
-    ivec2 grid_size = ivec2(1920, 1080);
-
     vec2 bird_position = positions[gl_GlobalInvocationID.x];
     vec2 bird_movement = movements[gl_GlobalInvocationID.x];
 
-    vec2 bird_position_screen_space = bird_position * vec2(1920.0, 1080.0);
-    vec2 mean_position = imageLoad(center_heatmap, ivec2(bird_position_screen_space)).xy;
+    float visual_range = 50.0 / 1920;
+    float repel_distance = 6.0 / 1920;
+
+    vec2 mean_position = vec2(0);
     vec2 mean_movement = vec2(0);
-    vec2 mean_repel = imageLoad(repel_heatmap, ivec2(bird_position_screen_space)).xy;
+    vec2 mean_repel = vec2(0);
+
+    int birds_seen = 0;
+    int birds_too_close = 0;
+    for (int x = 0; x < gl_NumWorkGroups.x; x++) {
+        vec2 temp_position = positions[x];
+        vec2 temp_movement = movements[x];
+        if (distance(temp_position, bird_position) < visual_range) {
+            mean_position += temp_position;
+            mean_movement += temp_movement;
+            birds_seen++;
+            if (distance(temp_position, bird_position) < repel_distance) {
+                mean_repel += bird_position - temp_position;
+                birds_too_close++;
+            }
+        }
+    }
+    mean_position /= birds_seen;
+    mean_movement /= birds_seen;
 
     vec2 move_to_center = (mean_position) * 0.0004;
-    vec2 move_to_real_center = (vec2(0.5)-bird_position) * 0.0004;
     vec2 repel_movement = (mean_repel) * 0.01;
     vec2 align_movement = (mean_movement) * 0.08;
 
-    bird_movement += move_to_real_center;
-    bird_movement += repel_movement;
+    if (birds_seen > 0) {
+        //bird_movement += move_to_center + align_movement;
+        if (birds_too_close > 0) {
+            bird_movement += repel_movement;
+        }
+    }
 
-    float speed_limit = 5 / 1920.0;
+    float speed_limit = 5.0 / 1920;
     if (length(bird_movement) > speed_limit) {
         bird_movement = normalize(bird_movement) * speed_limit;
     }
